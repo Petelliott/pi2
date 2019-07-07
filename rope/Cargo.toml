@@ -1,0 +1,7 @@
+[package]
+name = "rope"
+version = "0.1.0"
+authors = ["Peter Elliott <pelliott@ualberta.ca>"]
+edition = "2018"
+
+[dependencies]
