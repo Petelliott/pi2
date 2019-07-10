@@ -1,3 +1,4 @@
+pub mod rcstring;
 //pub mod bufferstorage;
 pub mod rope;
 
