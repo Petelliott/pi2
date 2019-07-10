@@ -19,6 +19,10 @@ pub enum Rope {
 }
 
 impl Rope {
+    pub fn new(s: String) -> Self {
+        Rope::Leaf(RcString::new(s))
+    }
+
     pub fn concat(r1: &Self, r2: &Self) -> Self {
         Rope::Node(Rc::new(Node {
             leftn:   r1.len(),
@@ -168,6 +172,72 @@ impl<'a, T: LeafIter<'a>> Iterator for RopeIter<'a, T> {
                 }
                 return None
             }
+        }
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use crate::rope::Rope;
+
+    #[test]
+    fn test_concat() {
+        let r1 = Rope::concat(
+            &Rope::new("aaa".to_string()),
+            &Rope::concat(
+                &Rope::new("bbb".to_string()),
+                &Rope::new("ccc".to_string())));
+
+        for (ch, e) in r1.char_iter().zip("aaabbbccc".chars()) {
+            assert_eq!(ch, e);
+        }
+    }
+
+    #[test]
+    fn test_len() {
+        let r1 = Rope::concat(
+            &Rope::new("aaa".to_string()),
+            &Rope::concat(
+                &Rope::new("bbb".to_string()),
+                &Rope::new("ccc".to_string())));
+
+        assert_eq!(r1.len(), 9);
+        assert_eq!(Rope::new("".to_string()).len(), 0);
+    }
+
+    #[test]
+    fn test_lenlines() {
+        let r1 = Rope::concat(
+            &Rope::new("aaa\n".to_string()),
+            &Rope::concat(
+                &Rope::new("b\nb\nb".to_string()),
+                &Rope::new("ccc\n".to_string())));
+
+        assert_eq!(r1.lenlines(), 4);
+        assert_eq!(Rope::new("".to_string()).lenlines(), 0);
+        assert_eq!(Rope::new("\n".to_string()).lenlines(), 1);
+    }
+
+    #[test]
+    fn test_char_substr() {
+        let r1 = Rope::concat(
+            &Rope::new("aaa".to_string()),
+            &Rope::concat(
+                &Rope::new("bbb".to_string()),
+                &Rope::new("ccc".to_string())));
+
+        for (ch, e) in r1.char_substr(1, 4).char_iter().zip("aabb".chars()) {
+            assert_eq!(ch, e);
+        }
+        for (ch, e) in r1.char_substr(0, r1.len()).char_iter().zip("aaabbbccc".chars()) {
+            assert_eq!(ch, e);
+        }
+        for (ch, e) in r1.char_substr(4, 0).char_iter().zip("".chars()) {
+            assert_eq!(ch, e);
+        }
+        for (ch, e) in r1.char_substr(3, 6).char_iter().zip("bbbccc".chars()) {
+            assert_eq!(ch, e);
         }
     }
 }
