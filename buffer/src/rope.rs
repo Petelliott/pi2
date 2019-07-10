@@ -70,6 +70,10 @@ impl Rope {
         }
     }
 
+    pub fn char_slice(&self, lo: usize, hi: usize) -> Self {
+        self.char_substr(lo, hi - lo)
+    }
+
     pub fn str_iter(&self) -> RopeIter<StrIter> {
         RopeIter {
             stack:    vec![self],
@@ -237,6 +241,28 @@ mod tests {
             assert_eq!(ch, e);
         }
         for (ch, e) in r1.char_substr(3, 6).char_iter().zip("bbbccc".chars()) {
+            assert_eq!(ch, e);
+        }
+    }
+
+    #[test]
+    fn test_char_slice() {
+        let r1 = Rope::concat(
+            &Rope::new("aaa".to_string()),
+            &Rope::concat(
+                &Rope::new("bbb".to_string()),
+                &Rope::new("ccc".to_string())));
+
+        for (ch, e) in r1.char_substr(1, 5).char_iter().zip("aabb".chars()) {
+            assert_eq!(ch, e);
+        }
+        for (ch, e) in r1.char_substr(0, r1.len()-1).char_iter().zip("aaabbbccc".chars()) {
+            assert_eq!(ch, e);
+        }
+        for (ch, e) in r1.char_substr(4, 4).char_iter().zip("".chars()) {
+            assert_eq!(ch, e);
+        }
+        for (ch, e) in r1.char_substr(3, 9).char_iter().zip("bbbccc".chars()) {
             assert_eq!(ch, e);
         }
     }
