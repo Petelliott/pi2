@@ -1,4 +1,3 @@
-
 use std::rc::Rc;
 use std::cmp::min;
 use std::ops::Range;
@@ -110,5 +109,16 @@ mod tests {
         assert_eq!(rs3.substr(1,0).len(), 0);
         assert_eq!(rs3.substr(0,10).len(), 1);
         assert_eq!(rs3.substr(15,3).len(), 0);
+    }
+
+    #[test]
+    fn test_lenlines() {
+        let rs = RcString::from("\nab\nc\ndefg\n");
+        assert_eq!(rs.lenlines(), 4);
+        let rs2 = rs.substr(2, 4);
+        assert_eq!(rs2.lenlines(), 2);
+        let rs3 = rs2.substr(2, 1);
+        assert_eq!(rs3.lenlines(), 0);
+        assert_eq!(rs3.substr(1,0).lenlines(), 0);
     }
 }
