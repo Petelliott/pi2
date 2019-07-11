@@ -1,4 +1,5 @@
 use std::rc::Rc;
+use std::ops::Range;
 use std::vec::Vec;
 use std::option::Option;
 use std::str::Chars;
@@ -20,7 +21,7 @@ pub enum Rope {
 
 impl Rope {
     pub fn new(s: String) -> Self {
-        Rope::Leaf(RcString::new(s))
+        Rope::Leaf(RcString::from(s))
     }
 
     pub fn concat(r1: &Self, r2: &Self) -> Self {
@@ -42,15 +43,7 @@ impl Rope {
     pub fn lenlines(&self) -> usize {
         match &self {
             Rope::Node(nd) => nd.leftnnl + nd.right.lenlines(),
-            Rope::Leaf(rcs) => {
-                let mut i = 0;
-                for ch in rcs.str().chars() {
-                    if ch == '\n' {
-                        i += 1;
-                    }
-                }
-                i
-            }
+            Rope::Leaf(rcs) => rcs.lenlines(),
         }
     }
 
@@ -70,8 +63,8 @@ impl Rope {
         }
     }
 
-    pub fn char_slice(&self, lo: usize, hi: usize) -> Self {
-        self.char_substr(lo, hi - lo)
+    pub fn char_slice(&self, r: Range<usize>) -> Self {
+        self.char_substr(r.start, r.end - r.start)
     }
 
     pub fn str_iter(&self) -> RopeIter<StrIter> {
@@ -253,16 +246,16 @@ mod tests {
                 &Rope::new("bbb".to_string()),
                 &Rope::new("ccc".to_string())));
 
-        for (ch, e) in r1.char_substr(1, 5).char_iter().zip("aabb".chars()) {
+        for (ch, e) in r1.char_slice(1..5).char_iter().zip("aabb".chars()) {
             assert_eq!(ch, e);
         }
-        for (ch, e) in r1.char_substr(0, r1.len()-1).char_iter().zip("aaabbbccc".chars()) {
+        for (ch, e) in r1.char_slice(0..r1.len()-1).char_iter().zip("aaabbbccc".chars()) {
             assert_eq!(ch, e);
         }
-        for (ch, e) in r1.char_substr(4, 4).char_iter().zip("".chars()) {
+        for (ch, e) in r1.char_slice(4..4).char_iter().zip("".chars()) {
             assert_eq!(ch, e);
         }
-        for (ch, e) in r1.char_substr(3, 9).char_iter().zip("bbbccc".chars()) {
+        for (ch, e) in r1.char_slice(3..9).char_iter().zip("bbbccc".chars()) {
             assert_eq!(ch, e);
         }
     }
