@@ -93,14 +93,14 @@ impl Rope {
         }
     }
 
-    /*
     pub fn line_substr(&self, idx: usize, n: usize) -> Self {
-        match &self {
-            Rope::Leaf(rcs) => ,
-            Rope::Node(nd) => ,
-        }
+        //TODO: this could be faster by scanning from the start maybe
+        self.line_slice(idx..(idx+n))
     }
-    */
+
+    pub fn line_slice(&self, r: Range<usize>) -> Self {
+        self.char_slice(self.line_start(r.start)..self.line_start(r.end))
+    }
 
     pub fn str_iter(&self) -> RopeIter<StrIter> {
         RopeIter {
@@ -315,5 +315,43 @@ mod tests {
             &Rope::new("\nworld\n".to_string()));
         assert_eq!(r3.line_start(0), 0);
         assert_eq!(r3.line_start(1), 6);
+    }
+
+    #[test]
+    fn test_line_substr() {
+        let r1 = Rope::concat(
+            &Rope::new("aa\na".to_string()),
+            &Rope::concat(
+                &Rope::new("\nbbb\n".to_string()),
+                &Rope::new("ccc".to_string())));
+
+        for (ch, e) in r1.line_substr(0, 4).char_iter().zip("aa\na\nbbb\nccc".chars()) {
+            assert_eq!(ch, e);
+        }
+        for (ch, e) in r1.line_substr(1, 2).char_iter().zip("a\nbbb\n".chars()) {
+            assert_eq!(ch, e);
+        }
+        for (ch, e) in r1.line_substr(2, 1).char_iter().zip("bbb\n".chars()) {
+            assert_eq!(ch, e);
+        }
+    }
+
+    #[test]
+    fn test_line_slice() {
+        let r1 = Rope::concat(
+            &Rope::new("aa\na".to_string()),
+            &Rope::concat(
+                &Rope::new("\nbbb\n".to_string()),
+                &Rope::new("ccc".to_string())));
+
+        for (ch, e) in r1.line_slice(0..4).char_iter().zip("aa\na\nbbb\nccc".chars()) {
+            assert_eq!(ch, e);
+        }
+        for (ch, e) in r1.line_slice(1..3).char_iter().zip("a\nbbb\n".chars()) {
+            assert_eq!(ch, e);
+        }
+        for (ch, e) in r1.line_slice(2..3).char_iter().zip("bbb\n".chars()) {
+            assert_eq!(ch, e);
+        }
     }
 }
