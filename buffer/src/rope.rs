@@ -19,6 +19,21 @@ pub enum Rope {
     Leaf(RcString),
 }
 
+fn nth_line_idx(s: &str, lnum: usize) -> usize {
+    let mut n = lnum;
+    let mut r = 0;
+    for (i, ch) in s.chars().enumerate() {
+        if n == 0 {
+            return i;
+        }
+        if ch == '\n' {
+            n -= 1;
+        }
+        r = i;
+    }
+    return r + 1;
+}
+
 impl Rope {
     pub fn new(s: String) -> Self {
         Rope::Leaf(RcString::from(s))
@@ -66,6 +81,26 @@ impl Rope {
     pub fn char_slice(&self, r: Range<usize>) -> Self {
         self.char_substr(r.start, r.end - r.start)
     }
+
+    pub fn line_start(&self, lnum: usize) -> usize {
+        match &self {
+            Rope::Leaf(rcs) => nth_line_idx(rcs.str(), lnum),
+            Rope::Node(nd) => if lnum <= nd.leftnnl {
+                nd.left.line_start(lnum)
+            } else {
+                nd.right.line_start(lnum - nd.leftnnl) + nd.leftn
+            }
+        }
+    }
+
+    /*
+    pub fn line_substr(&self, idx: usize, n: usize) -> Self {
+        match &self {
+            Rope::Leaf(rcs) => ,
+            Rope::Node(nd) => ,
+        }
+    }
+    */
 
     pub fn str_iter(&self) -> RopeIter<StrIter> {
         RopeIter {
@@ -258,5 +293,27 @@ mod tests {
         for (ch, e) in r1.char_slice(3..9).char_iter().zip("bbbccc".chars()) {
             assert_eq!(ch, e);
         }
+    }
+
+    #[test]
+    fn test_line_start() {
+        let r0 = Rope::new("\nhel".to_string());
+        assert_eq!(r0.line_start(0), 0);
+        assert_eq!(r0.line_start(1), 1);
+        let r1 = Rope::new("hello\nworld\nhi\n".to_string());
+        assert_eq!(r1.line_start(0), 0);
+        assert_eq!(r1.line_start(1), 6);
+        assert_eq!(r1.line_start(2), 12);
+        let r2 = Rope::concat(
+            &Rope::new("hello\n".to_string()),
+            &Rope::new("world\n".to_string()));
+        assert_eq!(r2.line_start(0), 0);
+        assert_eq!(r2.line_start(1), 6);
+
+        let r3 = Rope::concat(
+            &Rope::new("hello".to_string()),
+            &Rope::new("\nworld\n".to_string()));
+        assert_eq!(r3.line_start(0), 0);
+        assert_eq!(r3.line_start(1), 6);
     }
 }
