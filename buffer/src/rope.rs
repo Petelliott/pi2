@@ -136,20 +136,9 @@ impl Rope {
         }
     }
 
-    /*
-    fn line_iter(&self) -> RopeIter<LineIter> {
-        RopeIter{
-            stack:    vec![self],
-            curriter: None,
-        }
+    pub fn line_iter(&self) -> LineIter {
+        LineIter::from(self.clone())
     }
-
-    fn line_at(&self) -> Rope;
-    */
-
-    /*
-    fn line_slice(&self, idx: usize, n: usize) -> Self;
-    */
 }
 
 pub trait LeafIter<'a>: Iterator {
@@ -228,7 +217,6 @@ impl<'a, T: LeafIter<'a>> Iterator for RopeIter<'a, T> {
     }
 }
 
-/*
 pub struct LineIter {
     slice: Rope,
 }
@@ -245,12 +233,15 @@ impl Iterator for LineIter {
     type Item = Rope;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let line = self.line_slice(0..1);
-        self.slice =
+        let line = self.slice.line_slice(0..1);
+        self.slice = self.slice.line_slice(1..);
+        if self.slice.len() == 0 {
+            None
+        } else {
+            Some(line)
+        }
     }
 }
-*/
-
 
 #[cfg(test)]
 mod tests {
@@ -397,4 +388,5 @@ mod tests {
             assert_eq!(ch, e);
         }
     }
+
 }
