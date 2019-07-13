@@ -1,9 +1,10 @@
 use std::rc::Rc;
 use std::cmp::min;
+use std::cmp::PartialEq;
 use std::ops::{RangeBounds, Bound};
 use crate::newlines::count_newlines;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RcString {
     base: Rc<String>,
     off:  usize,
@@ -47,6 +48,12 @@ impl RcString {
 
     pub fn lenlines(&self) -> usize {
         count_newlines(&self.base[self.off..(self.off+self.len)])
+    }
+}
+
+impl PartialEq for RcString {
+    fn eq(&self, other: &Self) -> bool {
+        self.str() == other.str()
     }
 }
 
