@@ -1,5 +1,5 @@
 use std::rc::Rc;
-use std::ops::Range;
+use std::ops::{RangeBounds, Bound};
 use std::vec::Vec;
 use std::option::Option;
 use std::str::Chars;
@@ -78,8 +78,18 @@ impl Rope {
         }
     }
 
-    pub fn char_slice(&self, r: Range<usize>) -> Self {
-        self.char_substr(r.start, r.end - r.start)
+    pub fn char_slice(&self, r: impl RangeBounds<usize>) -> Self {
+        let start = match r.start_bound() {
+            Bound::Included(b) => *b,
+            Bound::Excluded(b) => b+1,
+            Bound::Unbounded => 0,
+        };
+        let len = match r.end_bound() {
+            Bound::Included(b) => (b - start) + 1,
+            Bound::Excluded(b) => b - start,
+            Bound::Unbounded => self.len() - start,
+        };
+        self.char_substr(start, len)
     }
 
     pub fn line_start(&self, lnum: usize) -> usize {
@@ -94,12 +104,22 @@ impl Rope {
     }
 
     pub fn line_substr(&self, idx: usize, n: usize) -> Self {
-        //TODO: this could be faster by scanning from the start maybe
         self.line_slice(idx..(idx+n))
     }
 
-    pub fn line_slice(&self, r: Range<usize>) -> Self {
-        self.char_slice(self.line_start(r.start)..self.line_start(r.end))
+    pub fn line_slice(&self, r: impl RangeBounds<usize>) -> Self {
+        //TODO: this could be faster by scanning from the start maybe
+        let start = match r.start_bound() {
+            Bound::Included(b) => self.line_start(*b),
+            Bound::Excluded(b) => self.line_start(b+1),
+            Bound::Unbounded => 0,
+        };
+
+        match r.end_bound() {
+            Bound::Included(b) => self.char_slice(start..self.line_start(*b)),
+            Bound::Excluded(b) => self.char_slice(start..=self.line_start(*b)),
+            Bound::Unbounded => self.char_slice(start..),
+        }
     }
 
     pub fn str_iter(&self) -> RopeIter<StrIter> {
@@ -208,6 +228,29 @@ impl<'a, T: LeafIter<'a>> Iterator for RopeIter<'a, T> {
     }
 }
 
+/*
+pub struct LineIter {
+    slice: Rope,
+}
+
+impl From<Rope> for LineIter {
+    fn from(rope: Rope) -> Self {
+        LineIter {
+            slice: rope,
+        }
+    }
+}
+
+impl Iterator for LineIter {
+    type Item = Rope;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let line = self.line_slice(0..1);
+        self.slice =
+    }
+}
+*/
+
 
 #[cfg(test)]
 mod tests {
@@ -284,7 +327,7 @@ mod tests {
         for (ch, e) in r1.char_slice(1..5).char_iter().zip("aabb".chars()) {
             assert_eq!(ch, e);
         }
-        for (ch, e) in r1.char_slice(0..r1.len()-1).char_iter().zip("aaabbbccc".chars()) {
+        for (ch, e) in r1.char_slice(..).char_iter().zip("aaabbbccc".chars()) {
             assert_eq!(ch, e);
         }
         for (ch, e) in r1.char_slice(4..4).char_iter().zip("".chars()) {
@@ -344,7 +387,7 @@ mod tests {
                 &Rope::new("\nbbb\n".to_string()),
                 &Rope::new("ccc".to_string())));
 
-        for (ch, e) in r1.line_slice(0..4).char_iter().zip("aa\na\nbbb\nccc".chars()) {
+        for (ch, e) in r1.line_slice(..).char_iter().zip("aa\na\nbbb\nccc".chars()) {
             assert_eq!(ch, e);
         }
         for (ch, e) in r1.line_slice(1..3).char_iter().zip("a\nbbb\n".chars()) {
