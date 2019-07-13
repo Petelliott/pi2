@@ -1,6 +1,6 @@
 use std::rc::Rc;
 use std::cmp::min;
-use std::ops::Range;
+use std::ops::{RangeBounds, Bound};
 use crate::newlines::count_newlines;
 
 #[derive(Clone)]
@@ -27,8 +27,18 @@ impl RcString {
         }
     }
 
-    pub fn slice(&self, r: Range<usize>) -> Self {
-        self.substr(r.start, r.end-r.start)
+    pub fn slice(&self, r: impl RangeBounds<usize>) -> Self {
+        let start = match r.start_bound() {
+            Bound::Included(b) => *b,
+            Bound::Excluded(b) => b+1,
+            Bound::Unbounded => 0,
+        };
+        let len = match r.end_bound() {
+            Bound::Included(b) => (b - start) + 1,
+            Bound::Excluded(b) => b - start,
+            Bound::Unbounded => self.len - start,
+        };
+        self.substr(start, len)
     }
 
     pub fn len(&self) -> usize {
@@ -90,8 +100,8 @@ mod tests {
     fn test_slice() {
         let rs = RcString::from("abcdefg");
         assert_eq!(rs.str(), "abcdefg");
-        let rs2 = rs.slice(2..6);
-        assert_eq!(rs2.str(), "cdef");
+        let rs2 = rs.slice(2..);
+        assert_eq!(rs2.str(), "cdefg");
         let rs3 = rs2.slice(2..3);
         assert_eq!(rs3.str(), "e");
         assert_eq!(rs3.slice(0..10).str(), "e");
