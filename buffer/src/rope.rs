@@ -21,6 +21,10 @@ pub enum Rope {
 }
 
 fn nth_line_idx(s: &str, lnum: usize) -> usize {
+    if s.len() == 0 {
+        return 0;
+    }
+
     let mut n = lnum;
     let mut r = 0;
     for (i, ch) in s.chars().enumerate() {
@@ -64,9 +68,9 @@ impl Rope {
         match &self {
             Rope::Leaf(rcs) => Rope::Leaf(rcs.substr(idx, n)),
             Rope::Node(nd) =>
-                if idx > nd.leftn {
+                if idx >= nd.leftn {
                     nd.right.char_substr(idx-nd.leftn, n)
-                } else if idx + n < nd.leftn {
+                } else if idx + n <= nd.leftn {
                     nd.left.char_substr(idx, n)
                 } else {
                     Rope::concat(
@@ -279,19 +283,21 @@ impl Iterator for LineIter {
     type Item = Rope;
 
     fn next(&mut self) -> Option<Self::Item> {
+        println!("slice: {:?})", self.slice);
+        if self.slice.len() == 0 {
+            return None
+        }
         let line = self.slice.line_slice(0..1);
         self.slice = self.slice.line_slice(1..);
-        if self.slice.len() == 0 {
-            None
-        } else {
-            Some(line)
-        }
+        Some(line)
     }
 }
 
 #[cfg(test)]
 mod tests {
+    extern crate itertools;
     use crate::rope::Rope;
+    use itertools::zip_eq;
 
     #[test]
     fn test_concat() {
@@ -362,6 +368,7 @@ mod tests {
         let r0 = Rope::from("\nhel");
         assert_eq!(r0.line_start(0), 0);
         assert_eq!(r0.line_start(1), 1);
+        assert_eq!(r0.line_start(2), 4);
         let r1 = Rope::from("hello\nworld\nhi\n");
         assert_eq!(r1.line_start(0), 0);
         assert_eq!(r1.line_start(1), 6);
@@ -377,6 +384,12 @@ mod tests {
             &Rope::from("\nworld\n"));
         assert_eq!(r3.line_start(0), 0);
         assert_eq!(r3.line_start(1), 6);
+        assert_eq!(r3.line_start(2), 12);
+
+        let r4 = Rope::concat(
+            &Rope::from(""),
+            &Rope::from("world\n"));
+        assert_eq!(r4.line_start(0), 0);
     }
 
     #[test]
@@ -401,8 +414,47 @@ mod tests {
                 &Rope::from("ccc")));
 
         assert_eq!(&r1.line_slice(..), "aa\na\nbbb\nccc");
-        assert_eq!(&r1.line_slice(1..=3), "a\nbbb\n");
+        assert_eq!(&r1.line_slice(1..=2), "a\nbbb\n");
         assert_eq!(&r1.line_slice(2..3), "bbb\n");
     }
 
+    #[test]
+    fn test_str_iter() {
+        let r1 = Rope::concat(
+            &Rope::from("aa\na"),
+            &Rope::concat(
+                &Rope::from("\nbbb\n"),
+                &Rope::from("ccc")));
+
+        for (s1, s2) in zip_eq(r1.str_iter(), vec!["aa\na", "\nbbb\n", "ccc"]) {
+            assert_eq!(s1, s2);
+        }
+    }
+
+    #[test]
+    fn test_char_iter() {
+        let r1 = Rope::concat(
+            &Rope::from("aa\na"),
+            &Rope::concat(
+                &Rope::from("\nbbb\n"),
+                &Rope::from("ccc")));
+
+        for (ch1, ch2) in zip_eq(r1.char_iter(), "aa\na\nbbb\nccc".chars()) {
+            assert_eq!(ch1, ch2);
+        }
+    }
+
+    #[test]
+    fn test_line_iter() {
+        let r1 = Rope::concat(
+            &Rope::from("aa\na"),
+            &Rope::concat(
+                &Rope::from("\nbbb\n"),
+                &Rope::from("ccc")));
+
+        for (l1, l2) in zip_eq(r1.line_iter(), vec!["aa\n", "a\n", "bbb\n", "ccc"]) {
+            println!("{:?}", l1);
+            assert_eq!(&l1, l2);
+        }
+    }
 }
