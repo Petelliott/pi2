@@ -42,12 +42,18 @@ fn nth_line_idx(s: &str, lnum: usize) -> usize {
 impl Rope {
 
     pub fn concat(r1: &Self, r2: &Self) -> Self {
-        Rope::Node(Rc::new(Node {
-            leftn:   r1.len(),
-            leftnnl: r1.lenlines(),
-            left:    r1.clone(),
-            right:   r2.clone(),
-        }))
+        if r1.len() == 0 {
+            r2.clone()
+        } else if r2.len() == 0 {
+            r1.clone()
+        } else {
+            Rope::Node(Rc::new(Node {
+                leftn:   r1.len(),
+                leftnnl: r1.lenlines(),
+                left:    r1.clone(),
+                right:   r2.clone(),
+            }))
+        }
     }
 
     pub fn len(&self) -> usize {
@@ -140,6 +146,18 @@ impl Rope {
 
     pub fn line_iter(&self) -> LineIter {
         LineIter::from(self.clone())
+    }
+
+    pub fn insert(&self, idx: usize, rope: Self) -> Self {
+        let left = self.char_slice(..idx);
+        let right = self.char_slice(idx..);
+
+        //TODO: maybe use depth
+        if left.len() > right.len() {
+            Rope::concat(&left, &Rope::concat(&rope, &right))
+        } else {
+            Rope::concat(&Rope::concat(&left, &rope), &right)
+        }
     }
 }
 
@@ -456,5 +474,14 @@ mod tests {
             println!("{:?}", l1);
             assert_eq!(&l1, l2);
         }
+    }
+
+    #[test]
+    fn test_insert() {
+        let r1 = Rope::from("hello world");
+        assert_eq!(&r1, "hello world");
+        assert_eq!(&r1.insert(0, Rope::from("s: ")), "s: hello world");
+        assert_eq!(&r1.insert(5, Rope::from(" to the")), "hello to the world");
+        assert_eq!(&r1.insert(11, Rope::from(".")), "hello world.");
     }
 }
