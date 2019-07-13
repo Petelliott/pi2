@@ -4,6 +4,16 @@ use std::cmp::PartialEq;
 use std::ops::{RangeBounds, Bound};
 use crate::newlines::count_newlines;
 
+/// RcString is a reference counted string with O(1) slice copies.
+///
+/// # example
+/// ```
+/// use buffer::rcstring::RcString;
+///
+/// let rcs = RcString::from("hello world");
+/// assert_eq!(rcs.slice(..=4), RcString::from("hello"));
+/// assert_eq!(rcs.substr(0, 5), RcString::from("hello"));
+/// ```
 #[derive(Clone, Debug)]
 pub struct RcString {
     base: Rc<String>,
@@ -12,10 +22,16 @@ pub struct RcString {
 }
 
 impl RcString {
+    /// get the string that underlies the RcString.
+    ///
+    /// this may be done with `Deref<T>` in the future
     pub fn str<'a>(&'a self) -> &'a str {
         &self.base[self.off..self.off+self.len]
     }
 
+    /// get a substr starting at `off` with length `len`.
+    ///
+    /// this is has very little overhead and the result is Owned.
     pub fn substr(&self, off: usize, len: usize) -> Self {
         RcString {
             base: self.base.clone(),
@@ -28,6 +44,7 @@ impl RcString {
         }
     }
 
+    /// same as substr but uses `RangeBounds`
     pub fn slice(&self, r: impl RangeBounds<usize>) -> Self {
         let start = match r.start_bound() {
             Bound::Included(b) => *b,
@@ -42,10 +59,12 @@ impl RcString {
         self.substr(start, len)
     }
 
+    /// get the length of an RcString
     pub fn len(&self) -> usize {
         self.len
     }
 
+    /// quickly count the number of lines in self
     pub fn lenlines(&self) -> usize {
         count_newlines(&self.base[self.off..(self.off+self.len)])
     }
