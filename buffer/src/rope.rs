@@ -1,3 +1,4 @@
+//! implements a reference counted rope for efficently editing text.
 use std::rc::Rc;
 use std::ops::{RangeBounds, Bound};
 use std::cmp::PartialEq;
@@ -6,14 +7,23 @@ use std::option::Option;
 use std::str::Chars;
 use crate::rcstring::RcString;
 
+/// The node of a Rope tree
 #[derive(Clone, Debug)]
 pub struct Node {
+    /// number of bytes in the left subtree
     leftn:   usize,
+    /// number of newlines in the left subtree
     leftnnl: usize,
+    /// the left subtree
     left:    Rope,
+    /// the right subtree
     right:   Rope,
 }
 
+/// Ropes are immutable data structures for representing a string.
+/// see [wikipedia](https://en.wikipedia.org/wiki/Rope_(data_structure))
+/// Ropes are reference counted and can be cloned with no additional memory,
+/// creating modified ropes uses O(log n) additional memory.
 #[derive(Clone, Debug)]
 pub enum Rope {
     Node(Rc<Node>),
@@ -41,6 +51,8 @@ fn nth_line_idx(s: &str, lnum: usize) -> usize {
 
 impl Rope {
 
+    /// concatenates two ropes into a new Rope.
+    /// concat will clone one side if the other has zero length.
     pub fn concat(r1: &Self, r2: &Self) -> Self {
         if r1.len() == 0 {
             r2.clone()
@@ -56,6 +68,8 @@ impl Rope {
         }
     }
 
+    /// gets the length of a rope in bytes.
+    /// note that this function is O(log n)
     pub fn len(&self) -> usize {
         match &self {
             Rope::Node(nd) => nd.leftn + nd.right.len(),
@@ -63,6 +77,8 @@ impl Rope {
         }
     }
 
+    /// gets the length of a rope in lines.
+    /// this function may need to scan some part of the rope to determine this.
     pub fn lenlines(&self) -> usize {
         match &self {
             Rope::Node(nd) => nd.leftnnl + nd.right.lenlines(),
@@ -70,6 +86,7 @@ impl Rope {
         }
     }
 
+    /// creates a new rope that is the substring from `idx` of length `n`.
     pub fn char_substr(&self, idx: usize, n: usize) -> Self {
         match &self {
             Rope::Leaf(rcs) => Rope::Leaf(rcs.substr(idx, n)),
@@ -86,6 +103,7 @@ impl Rope {
         }
     }
 
+    /// creates a new rope that is the slice with bounds `r`
     pub fn char_slice(&self, r: impl RangeBounds<usize>) -> Self {
         let start = match r.start_bound() {
             Bound::Included(b) => *b,
@@ -100,6 +118,8 @@ impl Rope {
         self.char_substr(start, len)
     }
 
+    /// find the byte offset of the `lnum`th line.
+    /// will return the length of the rope for lines past the last one.
     pub fn line_start(&self, lnum: usize) -> usize {
         match &self {
             Rope::Leaf(rcs) => nth_line_idx(rcs.str(), lnum),
@@ -111,10 +131,14 @@ impl Rope {
         }
     }
 
+    /// produces a Rope that is the substring of `n` lines starting at `idx`.
+    /// a trailing newline will be included if it exists.
     pub fn line_substr(&self, idx: usize, n: usize) -> Self {
         self.line_slice(idx..(idx+n))
     }
 
+    /// produces a rope that is a slice of bounds `r`.
+    /// a trailing newline will be included if it exists.
     pub fn line_slice(&self, r: impl RangeBounds<usize>) -> Self {
         //TODO: this could be faster by scanning from the start maybe
         let start = match r.start_bound() {
@@ -130,6 +154,7 @@ impl Rope {
         }
     }
 
+    /// returns an iterator over the leaves of the rope.
     pub fn str_iter(&self) -> RopeIter<StrIter> {
         RopeIter {
             stack:    vec![self],
@@ -137,6 +162,7 @@ impl Rope {
         }
     }
 
+    /// returns an iterator over the characters of the rope.
     pub fn char_iter(&self) -> RopeIter<CharIter> {
         RopeIter {
             stack:    vec![self],
@@ -144,10 +170,15 @@ impl Rope {
         }
     }
 
+    /// returns an iterator over the lines of the rope.
+    /// newlines are considered line terminators, and will be included.
     pub fn line_iter(&self) -> LineIter {
         LineIter::from(self.clone())
     }
 
+    /// creates a rope that has `rope` inserted at `idx`.
+    /// it is okay to use slices of the rope you are inserting to, as this
+    /// cannot create reference cycles.
     pub fn insert(&self, idx: usize, rope: Self) -> Self {
         let left = self.char_slice(..idx);
         let right = self.char_slice(idx..);
@@ -160,6 +191,7 @@ impl Rope {
         }
     }
 
+    /// creates a new rope with range `r` deleted.
     pub fn delete(&self, r: impl RangeBounds<usize>) -> Self {
         //TODO: this is bad
         match (r.start_bound(), r.end_bound()) {
