@@ -159,6 +159,28 @@ impl Rope {
             Rope::concat(&Rope::concat(&left, &rope), &right)
         }
     }
+
+    pub fn delete(&self, r: impl RangeBounds<usize>) -> Self {
+        //TODO: this is bad
+        match (r.start_bound(), r.end_bound()) {
+            (Bound::Unbounded, Bound::Unbounded) => Rope::from(""),
+            (Bound::Unbounded, Bound::Included(hi)) =>
+                self.char_slice(hi+1..),
+            (Bound::Unbounded, Bound::Excluded(hi)) =>
+                self.char_slice(hi..),
+            (Bound::Included(lo), Bound::Unbounded) =>
+                self.char_slice(..lo),
+            (Bound::Included(lo), Bound::Included(hi)) =>
+                Rope::concat(
+                    &self.char_slice(..lo),
+                    &self.char_slice(hi+1..)),
+            (Bound::Included(lo), Bound::Excluded(hi)) =>
+                Rope::concat(
+                    &self.char_slice(..lo),
+                    &self.char_slice(hi..)),
+            (Bound::Excluded(_), _) => panic!(),
+        }
+    }
 }
 
 impl From<String> for Rope {
@@ -483,5 +505,19 @@ mod tests {
         assert_eq!(&r1.insert(0, Rope::from("s: ")), "s: hello world");
         assert_eq!(&r1.insert(5, Rope::from(" to the")), "hello to the world");
         assert_eq!(&r1.insert(11, Rope::from(".")), "hello world.");
+    }
+
+    #[test]
+    fn test_delete() {
+        let r1 = Rope::concat(
+            &Rope::from("aaa"),
+            &Rope::concat(
+                &Rope::from("bbb"),
+                &Rope::from("ccc")));
+        assert_eq!(&r1.delete(..), "");
+        assert_eq!(&r1.delete(..3), "bbbccc");
+        assert_eq!(&r1.delete(1..=4), "abccc");
+        assert_eq!(&r1.delete(1..5), "abccc");
+        assert_eq!(&r1.delete(4..), "aaab");
     }
 }
